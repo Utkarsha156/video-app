@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Video Frame Search</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #F9FBFD;
+      margin: 0;
+      padding: 20px;
+      color: #333;
+    }
+
+    h1 {
+      text-align: center;
+      color: #444;
+      margin-bottom: 40px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 15px;
+      padding: 25px;
+      margin-bottom: 30px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+      transition: 0.3s ease;
+    }
+
+    .card:hover {
+      box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+    }
+
+    input[type="file"],
+    input[type="text"] {
+      margin-top: 10px;
+      margin-bottom: 15px;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    button {
+      padding: 10px 20px;
+      background-color: #AFDDFF;
+      color: #333;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    button:hover {
+      background-color: #FFECDB;
+    }
+
+    img {
+      width: 140px;
+      margin: 10px;
+      border-radius: 10px;
+      border: 1px solid #ddd;
+      transition: 0.3s ease;
+    }
+
+    img:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+
+    #videoStatus {
+      font-size: 0.95em;
+      color: #4caf50;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>🎬Video Frame Search</h1>
+
+    <div class="card">
+      <h3>1. Upload a Video (.mp4)</h3>
+      <input type="file" id="videoFile">
+      <br>
+      <button onclick="uploadVideo()">Upload Video</button>
+      <p id="videoStatus"></p>
+    </div>
+
+    <div class="card">
+      <h3>2. Search Similar Frames by Image</h3>
+      <input type="file" id="queryImage">
+      <br>
+      <button onclick="searchSimilar()">Search</button>
+      <div id="searchResults"></div>
+    </div>
+
+    <div class="card">
+      <h3>3. Browse Extracted Frames</h3>
+      <button onclick="loadFrames()">Load Frame Gallery</button>
+      <div id="frameGallery"></div>
+    </div>
+
+    <div class="card">
+      <h3>4. Preview a Frame by Filename</h3>
+      <p>Enter a filename (e.g. from <a href="/list-frames/" target="_blank">/list-frames/</a>):</p>
+      <input type="text" id="frameNameInput" placeholder="e.g. 67c94bd2-163f-4e8c-b369-7f9745ee5eba.jpg">
+      <br>
+      <button onclick="previewFrame()">Preview</button>
+      <div id="previewFrameResult"></div>
+    </div>
+  </div>
+
+  <script>
+    async function uploadVideo() {
+      const fileInput = document.getElementById('videoFile');
+      const file = fileInput.files[0];
+      if (!file) return alert("Please select a video file.");
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/upload-video/", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      document.getElementById("videoStatus").textContent = `Frames stored: ${data.frames_stored}`;
+    }
+
+    async function searchSimilar() {
+      const fileInput = document.getElementById('queryImage');
+      const file = fileInput.files[0];
+      if (!file) return alert("Please select an image.");
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/search-similar/", {
+        method: "POST",
+        body: formData,
+      });
+      const results = await res.json();
+
+      const container = document.getElementById("searchResults");
+      container.innerHTML = "<h4>Top Matches:</h4>";
+      results.forEach(r => {
+        const img = document.createElement("img");
+        img.src = `/frame/${r.image_path.split("\\").pop()}`;
+        container.appendChild(img);
+      });
+    }
+
+    async function loadFrames() {
+      const res = await fetch("/list-frames/");
+      const data = await res.json();
+      const container = document.getElementById("frameGallery");
+      container.innerHTML = "<h4>All Frames:</h4>";
+      data.frame_files.forEach(name => {
+        const img = document.createElement("img");
+        img.src = `/frame/${name}`;
+        container.appendChild(img);
+      });
+    }
+
+    function previewFrame() {
+      const name = document.getElementById("frameNameInput").value.trim();
+      const display = document.getElementById("previewFrameResult");
+
+      if (!name) {
+        alert("Please enter a valid frame filename (e.g., xyz.jpg)");
+        return;
+      }
+
+      const img = document.createElement("img");
+      img.src = `/frame/${name}`;
+      img.alt = "Frame image";
+      img.onerror = () => {
+        display.innerHTML = `<p style="color:red;"> Image not found. Check filename.</p>`;
+      };
+
+      display.innerHTML = "<h4>Preview:</h4>";
+      display.appendChild(img);
+    }
+  </script>
+</body>
+</html>
